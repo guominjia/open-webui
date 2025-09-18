@@ -1283,3 +1283,127 @@ async def get_api_key(
         }
     else:
         raise HTTPException(404, detail=ERROR_MESSAGES.API_KEY_NOT_FOUND)
+
+############################
+# Callback
+############################
+@router.get("/callback")
+async def callback(request: Request, response: Response):
+    auth_code = request.query_params.get("code")
+    come_from = request.query_params.get("from")
+    if not auth_code:
+        raise HTTPException(400, detail="Authorization code not found in the request")
+
+    async def call_back_sign_in_or_up(user_data, response=response):
+        has_users = Users.has_users()
+        email = user_data['preferred_username']
+        if not validate_email_format(email.lower()):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT
+            )
+
+        if Users.get_user_by_email(email.lower()):
+            raise HTTPException(400, detail=ERROR_MESSAGES.EMAIL_TAKEN)
+
+        try:
+            role = "admin" if not has_users else request.app.state.config.DEFAULT_USER_ROLE
+
+            hashed = get_password_hash(email.lower())
+            user = Auths.insert_new_auth(
+                email.lower(),
+                hashed,
+                user_data['name'],
+                user_data.get('picture', ''),
+                role,
+            )
+
+            if user:
+                expires_delta = parse_duration(request.app.state.config.JWT_EXPIRES_IN)
+                expires_at = None
+                if expires_delta:
+                    expires_at = int(time.time()) + int(expires_delta.total_seconds())
+
+                token = create_token(
+                    data={"id": user.id},
+                    expires_delta=expires_delta,
+                )
+
+                datetime_expires_at = (
+                    datetime.datetime.fromtimestamp(expires_at, datetime.timezone.utc)
+                    if expires_at
+                    else None
+                )
+
+                # Set the cookie token
+                response.set_cookie(
+                    key="token",
+                    value=token,
+                    expires=datetime_expires_at,
+                    httponly=True,  # Ensures the cookie is not accessible via JavaScript
+                    samesite=WEBUI_AUTH_COOKIE_SAME_SITE,
+                    secure=WEBUI_AUTH_COOKIE_SECURE,
+                )
+
+                if request.app.state.config.WEBHOOK_URL:
+                    await post_webhook(
+                        request.app.state.WEBUI_NAME,
+                        request.app.state.config.WEBHOOK_URL,
+                        WEBHOOK_MESSAGES.USER_SIGNUP(user.name),
+                        {
+                            "action": "signup",
+                            "message": WEBHOOK_MESSAGES.USER_SIGNUP(user.name),
+                            "user": user.model_dump_json(exclude_none=True),
+                        },
+                    )
+
+                user_permissions = get_permissions(
+                    user.id, request.app.state.config.USER_PERMISSIONS
+                )
+
+                if not has_users:
+                    # Disable signup after the first user is created
+                    request.app.state.config.ENABLE_SIGNUP = False
+
+                return {
+                    "token": token,
+                    "token_type": "Bearer",
+                    "expires_at": expires_at,
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                    "role": user.role,
+                    "profile_image_url": user.profile_image_url,
+                    "permissions": user_permissions,
+                }
+            else:
+                raise HTTPException(500, detail=ERROR_MESSAGES.CREATE_USER_ERROR)
+
+        except Exception as err:
+            log.error(f"Signup error: {str(err)}")
+            raise HTTPException(500, detail="An internal error occurred during signup.")
+
+    try:
+        import os
+        # Make HTTP request to authentication endpoint
+        async with ClientSession(trust_env=True) as session:
+            async with session.post(
+                f"{os.getenv('AUTH_SERVER_URL')}/auth/user",
+                json={'code': auth_code}, ssl=False
+            ) as response:
+                if response.status == 200:
+                    auth_data = await response.json()
+                    token = auth_data.get('token')
+                    user_data = auth_data.get('user')
+
+                    if token and user_data:
+                        final_response = await call_back_sign_in_or_up(user_data)
+                        return final_response
+                    else:
+                        raise HTTPException(400, detail="Invalid response from authentication service")
+                else:
+                    raise HTTPException(400, detail="Authentication failed")
+
+    except Exception as error:
+        log.error(f'Login failed: {error}')
+        redirect_url = come_from or "/"
+        return RedirectResponse(url=redirect_url)
