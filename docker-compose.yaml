@@ -3,21 +3,25 @@ services:
     volumes:
       - ollama:/root/.ollama
     container_name: ollama
-    pull_policy: always
     tty: true
     restart: unless-stopped
     image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
 
-  open-webui:
+  open-webui-localbuild:
     build:
       context: .
       args:
         OLLAMA_BASE_URL: '/ollama'
+        http_proxy: ${http_proxy}
+        https_proxy: ${https_proxy}
+        no_proxy: ${no_proxy}
+        AUTH_SERVER_URL: ${AUTH_SERVER_URL}
       dockerfile: Dockerfile
     image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
-    container_name: open-webui
+    container_name: open-webui-localbuild
     volumes:
-      - open-webui:/app/backend/data
+      - open-webui-localbuild:/app/backend/data
+      - ./logs/:/root/.npm/_logs/
     depends_on:
       - ollama
     ports:
@@ -25,10 +29,19 @@ services:
     environment:
       - 'OLLAMA_BASE_URL=http://ollama:11434'
       - 'WEBUI_SECRET_KEY='
+      - 'http_proxy=${http_proxy}'
+      - 'https_proxy=${https_proxy}'
+      - 'no_proxy=${no_proxy}'
+      - 'HF_ENDPOINT=${HF_ENDPOINT}'
+      - 'WEBUI_SECRET_KEY='
+      - 'MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}'
+      - 'MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}'
+      - 'MICROSOFT_CLIENT_TENANT_ID=${MICROSOFT_CLIENT_TENANT_ID}'
+      - 'AUTH_SERVER_URL=${AUTH_SERVER_URL}'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
 
 volumes:
   ollama: {}
-  open-webui: {}
+  open-webui-localbuild: {}
