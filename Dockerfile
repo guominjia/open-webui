@@ -23,6 +23,11 @@ ARG BUILD_HASH=dev-build
 ARG UID=0
 ARG GID=0
 
+# Proxy
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+
 ######## WebUI frontend ########
 FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
@@ -34,6 +39,15 @@ WORKDIR /app
 
 # to store git revision in build
 RUN apk add --no-cache git
+
+# Proxy
+RUN npm config set proxy $http_proxy \
+    && npm config set https-proxy $https_proxy
+ENV http_proxy=$http_proxy
+ENV https_proxy=$https_proxy
+ENV HTTP_PROXY=$http_proxy
+ENV HTTPS_PROXY=$https_proxy
+ENV ONNXRUNTIME_NODE_INSTALL_CUDA=skip
 
 COPY package.json package-lock.json ./
 RUN npm ci --force
