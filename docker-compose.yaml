@@ -14,7 +14,6 @@ services:
         http_proxy: ${http_proxy}
         https_proxy: ${https_proxy}
         no_proxy: ${no_proxy}
-        AUTH_SERVER_URL: ${AUTH_SERVER_URL}
       dockerfile: Dockerfile
     image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
     container_name: open-webui-localbuild
@@ -37,7 +36,6 @@ services:
       - 'MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}'
       - 'MICROSOFT_CLIENT_TENANT_ID=${MICROSOFT_CLIENT_TENANT_ID}'
       - 'MICROSOFT_REDIRECT_URI=${MICROSOFT_REDIRECT_URI}'
-      - 'AUTH_SERVER_URL=${AUTH_SERVER_URL}'
       - 'ENABLE_OAUTH_SIGNUP=${ENABLE_OAUTH_SIGNUP-False}'
     extra_hosts:
       - host.docker.internal:host-gateway
