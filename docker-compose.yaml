@@ -37,7 +37,7 @@ services:
       - 'MICROSOFT_CLIENT_TENANT_ID=${MICROSOFT_CLIENT_TENANT_ID}'
       - 'MICROSOFT_REDIRECT_URI=${MICROSOFT_REDIRECT_URI}'
       - 'ENABLE_OAUTH_SIGNUP=${ENABLE_OAUTH_SIGNUP-False}'
-      - 'MICROSOFT_OAUTH_SCOPE=${MICROSOFT_OAUTH_SCOPE-"openid email profile"}'
+      - 'MICROSOFT_OAUTH_SCOPE=${MICROSOFT_OAUTH_SCOPE-"openid email profile offline_access"}'
     extra_hosts:
       - host.docker.internal:host-gateway
     restart: unless-stopped
