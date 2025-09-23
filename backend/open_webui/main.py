@@ -2017,10 +2017,3 @@ else:
     log.warning(
         f"Frontend build directory not found at '{FRONTEND_BUILD_DIR}'. Serving API only."
     )
-
-@app.get("/callback")  
-async def callback_redirect(request: Request): 
-    auth_code = request.query_params.get("code")
-    come_from = request.query_params.get("from")
-    redirect_url = f"/api/v1/auths/callback?code={auth_code}&from={come_from}"  
-    return RedirectResponse(url=redirect_url)

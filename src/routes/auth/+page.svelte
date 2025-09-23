@@ -447,14 +447,8 @@
 									{#if $config?.oauth?.providers?.microsoft}
 										<button
 											class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
-											on:click={async () => { 
-												try {
-													const response = await fetch(`${AUTH_SERVER_URL}/auth/autologin?from=` + encodeURIComponent(window.location.href));
-													const redirectUrl = await response.text();
-													window.location.href = redirectUrl.toString();
-												} catch (error) {
-													console.error('Error during fetch:', error);
-												}
+											on:click={() => {
+												window.location.href = `${WEBUI_BASE_URL}/oauth/microsoft/login`;
 											}}
 										>
 											<svg
