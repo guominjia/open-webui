@@ -190,6 +190,9 @@ async def get_headers_and_cookies(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
+    if config.get("headers") and isinstance(config.get("headers"), dict):
+        headers = {**headers, **config.get("headers")}
+
     return headers, cookies
 
 
@@ -1010,7 +1013,9 @@ async def embeddings(request: Request, form_data: dict, user):
     session = None
     streaming = False
 
-    headers, cookies = await get_headers_and_cookies(request, url, key, api_config, user=user)
+    headers, cookies = await get_headers_and_cookies(
+        request, url, key, api_config, user=user
+    )
     try:
         session = aiohttp.ClientSession(trust_env=True)
         r = await session.request(
